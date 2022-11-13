@@ -58,8 +58,7 @@ double pitch(double x, double y, double z) {
   return asin(cos(x)*sin(y)*cos(z) + sin(x)*sin(z));
 } 
 
-double roll(double x, double y, double z) {
-  //roll = -arctan[(-cos(ax)*sin(az) + sin(ax)*sin(ay)*cos(az)) / (cos(ay)*cos(az))]
-  return -atan(() / (cos(y)));
-} 
-
+// double roll(double x, double y, double z) {
+//   //roll = -arctan[(-cos(ax)*sin(az) + sin(ax)*sin(ay)*cos(az)) / (cos(ay)*cos(az))]
+//   return -atan(() / (cos(y)));
+// } 
