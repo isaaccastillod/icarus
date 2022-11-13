@@ -1,6 +1,11 @@
 #include <Arduino.h>
 #include <math.h>
 #include <Servo.h>
+#include <Wire.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BNO055.h>
+#include <utility/imumaths.h>
+#include <Adafruit_SPIDevice.h> 
 #include "ESC.h"
 #define LED_PIN (13)              // Pin for the LED 
 #define SPEED_MIN (1000)                                  // Set the Minimum Speed in microseconds
