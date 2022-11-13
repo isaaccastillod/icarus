@@ -1,5 +1,13 @@
 #include <Arduino.h>
 #include <math.h>
+#include <Servo.h>
+#include "ESC.h"
+#define LED_PIN (13)              // Pin for the LED 
+#define SPEED_MIN (1000)                                  // Set the Minimum Speed in microseconds
+#define SPEED_MAX (2000)                                  // Set the Minimum Speed in microseconds
+
+ESC myESC (6, SPEED_MIN, SPEED_MAX, 500);                 // ESC_Name (ESC PIN, Minimum Value, Maximum Value, Default Speed, Arm Value)
+int oESC; 
 
 const int groundpin = A4;             // analog input pin 4 -- ground
 const int powerpin = A5;              // analog input pin 5 -- voltage
@@ -8,6 +16,8 @@ const int ypin = A2;                  // y-axis
 const int zpin = A1;                  // z-axis (only on 3-axis models)
 int pin = 7;
 unsigned long duration;
+// Servo ESC;
+
 
 void setup() {
   Serial.begin(9600);
@@ -16,15 +26,19 @@ void setup() {
   pinMode(powerpin, OUTPUT);
   digitalWrite(groundpin, LOW);
   digitalWrite(powerpin, HIGH);
+  digitalWrite(LED_PIN, HIGH);    // LED High while signal is High (can be removed)
+  myESC.calib();
+  myESC.arm();   
+  Serial.print("ESC armed");
+  digitalWrite(LED_PIN, LOW);     // LED Low when the calibration is done (can be removed)
 }
 
 void loop() {
-  double x = analogRead(xpin);
-
   duration = pulseIn(pin, HIGH);
   Serial.print("PWM: ");
   Serial.print(duration);
   Serial.print("\t");
+  myESC.speed(duration);
   // print the sensor values:
   Serial.print("X: ");
   Serial.print(analogRead(xpin));
@@ -38,28 +52,26 @@ void loop() {
   Serial.print(analogRead(zpin));
   Serial.println();
   // delay before next reading:
-  delay(100);
+  //  delay(100);
 }
 
-int* filter(float x, float y, float z) {
-  return 0;
-}
+// void setup() {
+//   pinMode(LED_PIN, OUTPUT);                               // LED Visual Output
+//   myESC.arm();                                            // Send the Arm value so the ESC will be ready to take commands
+//   digitalWrite(LED_PIN, HIGH);                            // LED High Once Armed
+//   delay(5000);                                            // Wait for a while
+// }
 
-void calibration() {
-
-}
-
-double tilt(double x, double y, double z) { // -arctan[(-sin(ax)*cos(az) + cos(ax)*sin(ay)*sin(az)) / (cos(ax)*cos(ay))]
-  return atan((-sin(x)*cos(z) + cos(x)*sin(y)*sin(z) )/ (cos(x)*cos(y)) );  
-}
-
-double pitch(double x, double y, double z) {
-  //pitch = arcsin[ cos(ax)*sin(ay)*cos(az) + sin(ax)*sin(az) ]
-  return asin(cos(x)*sin(y)*cos(z) + sin(x)*sin(z));
-} 
-
-double roll(double x, double y, double z) {
-  //roll = -arctan[(-cos(ax)*sin(az) + sin(ax)*sin(ay)*cos(az)) / (cos(ay)*cos(az))]
-  return -atan(() / (cos(y)));
-} 
+// void loop() {
+//   for (oESC = SPEED_MIN; oESC <= SPEED_MAX; oESC += 1) {  // goes from 1000 microseconds to 2000 microseconds
+//     myESC.speed(oESC);                                    // tell ESC to go to the oESC speed value
+//     delay(10);                                            // waits 10ms for the ESC to reach speed
+//   }
+//   delay(1000);
+//   for (oESC = SPEED_MAX; oESC >= SPEED_MIN; oESC -= 1) {  // goes from 2000 microseconds to 1000 microseconds
+//     myESC.speed(oESC);                                    // tell ESC to go to the oESC speed value
+//     delay(10);                                            // waits 10ms for the ESC to reach speed  
+//    }
+//   delay(5000);                                            // Wait for a while befor restart
+// }
 
