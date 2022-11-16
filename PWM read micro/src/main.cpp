@@ -16,10 +16,14 @@
 #include "ESC.h"
 #define LED_PIN (13)              // Pin for the LED 
 #define SPEED_MIN (1000)                                  // Set the Minimum Speed in microseconds
+#define SPEED_LOW (1200)  
+#define SPEED_MID (1500) 
 #define SPEED_MAX (2000)                                  // Set the Minimum Speed in microseconds
 
-ESC myESC (6, SPEED_MIN, SPEED_MAX, 500);                 // ESC_Name (ESC PIN, Minimum Value, Maximum Value, Default Speed, Arm Value)
-int oESC; 
+ESC myESC1 (11, SPEED_MIN, SPEED_MAX, 500);                 // ESC_Name (ESC PIN, Minimum Value, Maximum Value, Default Speed, Arm Value)
+ESC myESC2 (10, SPEED_MIN, SPEED_MAX, 500);                 // ESC_Name (ESC PIN, Minimum Value, Maximum Value, Default Speed, Arm Value)
+int oESC;                                                 // Variable for the speed sent to the ESC
+
 
 const int groundpin = A4;             // analog input pin 4 -- ground
 const int powerpin = A5;              // analog input pin 5 -- voltage
@@ -28,64 +32,7 @@ const int ypin = A2;                  // y-axis
 const int zpin = A1;                  // z-axis (only on 3-axis models)
 int pin = 7;
 unsigned long duration;
-// Servo ESC;
 
-
-// void setup() {
-//   Serial.begin(9600);
-//   pinMode(pin, INPUT);
-//   pinMode(groundpin, OUTPUT);
-//   pinMode(powerpin, OUTPUT);
-//   digitalWrite(groundpin, LOW);
-//   digitalWrite(powerpin, HIGH);
-//   digitalWrite(LED_PIN, HIGH);    // LED High while signal is High (can be removed)
-//   myESC.calib();
-//   myESC.arm();   
-//   Serial.print("ESC armed");
-//   digitalWrite(LED_PIN, LOW);     // LED Low when the calibration is done (can be removed)
-// }
-
-// void loop() {
-//   duration = pulseIn(pin, HIGH);
-//   Serial.print("PWM: ");
-//   Serial.print(duration);
-//   Serial.print("\t");
-//   myESC.speed(duration);
-//   // print the sensor values:
-//   Serial.print("X: ");
-//   Serial.print(analogRead(xpin));
-//   // print a tab between values:
-//   Serial.print("\t");
-//   Serial.print("Y: ");
-//   Serial.print(analogRead(ypin));
-//   // print a tab between values:
-//   Serial.print("\t");
-//   Serial.print("Z: ");  //600 - 404
-//   Serial.print(analogRead(zpin));
-//   Serial.println();
-//   // delay before next reading:
-//   //  delay(100);
-// }
-
-// void setup() {
-//   pinMode(LED_PIN, OUTPUT);                               // LED Visual Output
-//   myESC.arm();                                            // Send the Arm value so the ESC will be ready to take commands
-//   digitalWrite(LED_PIN, HIGH);                            // LED High Once Armed
-//   delay(5000);                                            // Wait for a while
-// }
-
-// void loop() {
-//   for (oESC = SPEED_MIN; oESC <= SPEED_MAX; oESC += 1) {  // goes from 1000 microseconds to 2000 microseconds
-//     myESC.speed(oESC);                                    // tell ESC to go to the oESC speed value
-//     delay(10);                                            // waits 10ms for the ESC to reach speed
-//   }
-//   delay(1000);
-//   for (oESC = SPEED_MAX; oESC >= SPEED_MIN; oESC -= 1) {  // goes from 2000 microseconds to 1000 microseconds
-//     myESC.speed(oESC);                                    // tell ESC to go to the oESC speed value
-//     delay(10);                                            // waits 10ms for the ESC to reach speed  
-//    }
-//   delay(5000);                                            // Wait for a while befor restart
-// }
 
 // ------------------------------------------------
 // BNO055 ReadData
@@ -97,9 +44,30 @@ uint16_t BNO055_SAMPLERATE_DELAY_MS = 100;
 //                                   id, address
 Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28);
 
+void ESC_startup() {
+  pinMode(LED_PIN, OUTPUT);                               // LED Visual Output  
+  Serial.println("5 seconds to plug in battery");
+  delay(4000);
+  Serial.println("1 second to plug in battery");
+  delay(1000);
+  Serial.println("Arming now");
+  myESC1.arm();                                            // Send the Arm value so the ESC will be ready to take commands
+  Serial.println("Finished arming ESC1");
+  myESC2.arm();  
+  Serial.println("Finished arming ESC2");
+  digitalWrite(LED_PIN, HIGH);                            // LED High Once Armed
+  Serial.println("Waiting");
+  delay(5000);                                            // Wait for a while
+  myESC1.speed(SPEED_MIN);                                    // my calibration sequence
+  myESC2.speed(SPEED_MIN); 
+  delay(2000); 
+  Serial.println("Drone armed");
+}
+
 void setup(void)
 {
   Serial.begin(115200);
+  ESC_startup();
   Serial.println("Orientation Sensor Test"); Serial.println("");
 
   /* Initialise the sensor */
@@ -171,6 +139,9 @@ void printEvent(sensors_event_t* event) {
 
 void loop(void)
 {
+  myESC1.speed(SPEED_LOW);                                    // tell ESC to go to the oESC speed value
+  myESC2.speed(SPEED_LOW); 
+  Serial.println("Cycle Done");
   //could add VECTOR_ACCELEROMETER, VECTOR_MAGNETOMETER,VECTOR_GRAVITY...
   sensors_event_t orientationData , angVelocityData , linearAccelData, magnetometerData, accelerometerData, gravityData;
   bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
@@ -207,4 +178,5 @@ void loop(void)
   Serial.println("--");
   delay(BNO055_SAMPLERATE_DELAY_MS);
 }
+
 
