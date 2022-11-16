@@ -4,7 +4,6 @@
 #include <Adafruit_BNO055.h>
 #include <utility/imumaths.h>
 #include <Adafruit_SPIDevice.h>
-
 #include <Arduino.h>
 #include <math.h>
 #include <Servo.h>
@@ -19,8 +18,9 @@
 #define SPEED_LOW (1200)  
 #define SPEED_MID (1500) 
 #define SPEED_MAX (2000)                                  // Set the Minimum Speed in microseconds
-
+// Right Motor
 ESC myESC1 (11, SPEED_MIN, SPEED_MAX, 500);                 // ESC_Name (ESC PIN, Minimum Value, Maximum Value, Default Speed, Arm Value)
+// Left Motor
 ESC myESC2 (10, SPEED_MIN, SPEED_MAX, 500);                 // ESC_Name (ESC PIN, Minimum Value, Maximum Value, Default Speed, Arm Value)
 int oESC;                                                 // Variable for the speed sent to the ESC
 
@@ -31,6 +31,8 @@ const int xpin = A3;                  // x-axis of the accelerometer
 const int ypin = A2;                  // y-axis
 const int zpin = A1;                  // z-axis (only on 3-axis models)
 int pin = 7;
+int L_speed = SPEED_MID;
+int R_speed = SPEED_MID;
 unsigned long duration;
 
 
@@ -83,87 +85,15 @@ void setup(void)
   delay(1000);
 }
 
-void printEvent(sensors_event_t* event) {
-  double x = -1000000, y = -1000000 , z = -1000000; //dumb values, easy to spot problem
-  if (event->type == SENSOR_TYPE_ACCELEROMETER) {
-    Serial.print("Accl:");
-    x = event->acceleration.x;
-    y = event->acceleration.y;
-    z = event->acceleration.z;
-  }
-  else if (event->type == SENSOR_TYPE_ORIENTATION) {
-    Serial.print("Orient:");
-    x = event->orientation.x;
-    y = event->orientation.y;
-    z = event->orientation.z;
-  }
-  else if (event->type == SENSOR_TYPE_MAGNETIC_FIELD) {
-    Serial.print("Mag:");
-    x = event->magnetic.x;
-    y = event->magnetic.y;
-    z = event->magnetic.z;
-  }
-  else if (event->type == SENSOR_TYPE_GYROSCOPE) {
-    Serial.print("Gyro:");
-    x = event->gyro.x;
-    y = event->gyro.y;
-    z = event->gyro.z;
-  }
-  else if (event->type == SENSOR_TYPE_ROTATION_VECTOR) {
-    Serial.print("Rot:");
-    x = event->gyro.x;
-    y = event->gyro.y;
-    z = event->gyro.z;
-  }
-  else if (event->type == SENSOR_TYPE_LINEAR_ACCELERATION) {
-    Serial.print("Linear:");
-    x = event->acceleration.x;
-    y = event->acceleration.y;
-    z = event->acceleration.z;
-  }
-  else if (event->type == SENSOR_TYPE_GRAVITY) {
-    Serial.print("Gravity:");
-    x = event->acceleration.x;
-    y = event->acceleration.y;
-    z = event->acceleration.z;
-  }
-  else {
-    Serial.print("Unk:");
-  }
-
-  Serial.print("\tx= ");
-  Serial.print(x);
-  Serial.print(" |\ty= ");
-  Serial.print(y);
-  Serial.print(" |\tz= ");
-  Serial.println(z);
-}
-
 void loop(void)
 {
-  myESC1.speed(SPEED_LOW);                                    // tell ESC to go to the oESC speed value
-  myESC2.speed(SPEED_LOW); 
+  myESC1.speed(R_speed);                                    // tell ESC to go to the oESC speed value
+  myESC2.speed(L_speed); 
   Serial.println("Cycle Done");
   //could add VECTOR_ACCELEROMETER, VECTOR_MAGNETOMETER,VECTOR_GRAVITY...
-  sensors_event_t orientationData , angVelocityData , linearAccelData, magnetometerData, accelerometerData, gravityData;
+  sensors_event_t orientationData;
   bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
-  bno.getEvent(&angVelocityData, Adafruit_BNO055::VECTOR_GYROSCOPE);
-  // bno.getEvent(&linearAccelData, Adafruit_BNO055::VECTOR_LINEARACCEL);
-  // bno.getEvent(&magnetometerData, Adafruit_BNO055::VECTOR_MAGNETOMETER);
-  // bno.getEvent(&accelerometerData, Adafruit_BNO055::VECTOR_ACCELEROMETER);
-  // bno.getEvent(&gravityData, Adafruit_BNO055::VECTOR_GRAVITY);
-
-  // printEvent(&orientationData);
-  // printEvent(&angVelocityData);
-  // printEvent(&linearAccelData);
-  // printEvent(&magnetometerData);
-  // printEvent(&accelerometerData);
-  // printEvent(&gravityData);
-
-  // int8_t boardTemp = bno.getTemp();
-  // Serial.println();
-  // Serial.print(F("temperature: "));
-  // Serial.println(boardTemp);
+  
 
   uint8_t system, gyro, accel, mag = 0;
   bno.getCalibration(&system, &gyro, &accel, &mag);
@@ -182,10 +112,29 @@ void loop(void)
   Serial.print(y);
   Serial.print(" |\tz= ");
   Serial.println(z);
-  // Serial.print(" Accel=");
-  // Serial.print(accel);
-  // Serial.print(" Mag=");
-  // Serial.println(mag);
+ 
+
+  //Control loop
+  if (y < -5) {
+    R_speed++;
+    L_speed--;
+  } else if (y > 5) {
+    R_speed--;
+    L_speed++;
+  }
+
+  if (R_speed < SPEED_MID - 100) {
+    R_speed = SPEED_MID - 100;
+  }
+  if (L_speed < SPEED_MID - 100) {
+    L_speed = SPEED_MID - 100;
+  }
+  if (R_speed > SPEED_MID + 100) {
+    R_speed = SPEED_MID + 100;
+  }
+  if (L_speed > SPEED_MID + 100) {
+    L_speed = SPEED_MID + 100;
+  }
 
   Serial.println("--");
   delay(BNO055_SAMPLERATE_DELAY_MS);
