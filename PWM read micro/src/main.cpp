@@ -29,9 +29,35 @@ const int xpin = A3;                  // x-axis of the accelerometer
 const int ypin = A2;                  // y-axis
 const int zpin = A1;                  // z-axis (only on 3-axis models)
 int pin = 7;
-int L_speed = SPEED_MID;
-int R_speed = SPEED_MID;
+int L_speed = SPEED_LOW;
+int R_speed = SPEED_LOW;
 unsigned long duration;
+
+struct PID_
+{
+  double kP;
+  double kD;
+  double kI;
+  double lastDerivative;
+};
+
+PID_ pitchPD;
+
+void initPID() {
+  pitchPD.kD = 0.25;
+  pitchPD.kP = 0.25;
+  pitchPD.kI = 0;
+  pitchPD.lastDerivative = 0;
+}
+
+double pitchPID(double desiredPitch, double currPitch, double dt, PID_ pid) {
+    double error = desiredPitch - currPitch;
+    double derivative = error / dt;
+    double output = pid.kP * error + pid.kD * (derivative - pid.lastDerivative);
+    pid.lastDerivative = derivative;
+    return output;
+}
+
 
 
 // ------------------------------------------------
@@ -71,6 +97,7 @@ void setup(void)
   Serial.println("Orientation Sensor Test"); Serial.println("");
 
   // while(!Serial);
+  initPID();
 
   /* Initialise the sensor */
   if (!bno.begin())
@@ -113,13 +140,15 @@ void loop(void)
  
 
   //Control loop
-  if (y < -5) {
-    R_speed++;
-    L_speed--;
-  } else if (y > 5) {
-    R_speed--;
-    L_speed++;
-  }
+  // if (y < -5) {
+  //   R_speed++;
+  //   L_speed--;
+  // } else if (y > 5) {
+  //   R_speed--;
+  //   L_speed++;
+  // }
+  L_speed -= pitchPID(0, y, 1, pitchPD);
+  R_speed += pitchPID(0, y, 1, pitchPD);
 
   if (R_speed < SPEED_MID - 100) {
     R_speed = SPEED_MID - 100;
