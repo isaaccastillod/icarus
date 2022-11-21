@@ -28,9 +28,11 @@ const int powerpin = A5;              // analog input pin 5 -- voltage
 const int xpin = A3;                  // x-axis of the accelerometer
 const int ypin = A2;                  // y-axis
 const int zpin = A1;                  // z-axis (only on 3-axis models)
-int pin = 7;
-int L_speed = SPEED_MID;
-int R_speed = SPEED_MID;
+// int pin = 7;
+int throttle_pin = 7;
+int throttle_speed = SPEED_MIN;
+int L_offset = 0;
+int R_offset = 0;
 unsigned long duration;
 
 
@@ -69,6 +71,7 @@ void setup(void)
   Serial.begin(115200);
   ESC_startup();
   Serial.println("Orientation Sensor Test"); Serial.println("");
+  pinMode(throttle_pin, INPUT);
 
   // while(!Serial);
 
@@ -85,56 +88,71 @@ void setup(void)
 
 void loop(void)
 {
-  myESC1.speed(R_speed);                                    // tell ESC to go to the oESC speed value
-  myESC2.speed(L_speed); 
-  Serial.println("Cycle Done");
+  throttle_speed = pulseIn(throttle_pin, HIGH);
+  // Serial.println(throttle_speed);  
+  int tot_R_speed = throttle_speed+R_offset;
+  int tot_L_speed = throttle_speed+L_offset;
+  //DO NOT REMOVE, SAFETY
+  if (tot_R_speed > SPEED_LOW || tot_L_speed > SPEED_LOW) {
+    myESC1.speed(SPEED_MIN);                                    // tell ESC to go to the oESC speed value
+    myESC2.speed(SPEED_MIN); 
+  } else {    
+    myESC1.speed(tot_R_speed);                                    // tell ESC to go to the oESC speed value
+    myESC2.speed(tot_L_speed);
+  }  
+  Serial.print("\ttot_R_speed= ");
+  Serial.print(tot_R_speed);
+  Serial.print(" |\ttot_L_speed= ");
+  Serial.println(tot_L_speed);
   //could add VECTOR_ACCELEROMETER, VECTOR_MAGNETOMETER,VECTOR_GRAVITY...
   sensors_event_t orientationData;
-  bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
-  
+  bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);  
 
   uint8_t system, gyro, accel, mag = 0;
   bno.getCalibration(&system, &gyro, &accel, &mag);
-  Serial.println();
-  Serial.print("Calibration: Sys=");
-  Serial.print(system);
+  // Serial.println();
+  // Serial.print("Calibration: Sys=");
+  // Serial.print(system);
   double x = -1000000, y = -1000000 , z = -1000000; //dumb values, easy to spot problem
-  Serial.print(" Orient=");
-  Serial.print("Orient:");
+  // Serial.print(" Orient=");
+  // Serial.print("Orient:");
   x = orientationData.gyro.x;
   y = orientationData.gyro.y;
   z = orientationData.gyro.z;
-  Serial.print("\tx= ");
-  Serial.print(x);
+  // Serial.print("\tx= ");
+  // Serial.print(x);
   Serial.print(" |\ty= ");
   Serial.print(y);
-  Serial.print(" |\tz= ");
-  Serial.println(z);
- 
+  // Serial.print(" |\tz= ");
+  // Serial.println(z); 
 
   //Control loop
   if (y < -5) {
-    R_speed++;
-    L_speed--;
+    R_offset+=3;
+    L_offset-=3;
   } else if (y > 5) {
-    R_speed--;
-    L_speed++;
+    R_offset-=3;
+    L_offset+=3;
   }
 
-  if (R_speed < SPEED_MID - 100) {
-    R_speed = SPEED_MID - 100;
+  if (R_offset < -100) {
+    R_offset = -100;
   }
-  if (L_speed < SPEED_MID - 100) {
-    L_speed = SPEED_MID - 100;
+  if (L_offset < -100) {
+    L_offset = -100;
   }
-  if (R_speed > SPEED_MID + 100) {
-    R_speed = SPEED_MID + 100;
+  if (R_offset > 100) {
+    R_offset = 100;
   }
-  if (L_speed > SPEED_MID + 100) {
-    L_speed = SPEED_MID + 100;
+  if (L_offset > 100) {
+    L_offset = 100;
   }
+  Serial.print(" |\tR_offset= ");
+  Serial.print(R_offset);
+  Serial.print(" |\tL_offset= ");
+  Serial.print(L_offset);
 
-  Serial.println("--");
+  // Serial.println("--");
   delay(BNO055_SAMPLERATE_DELAY_MS);
 }
 
