@@ -35,6 +35,32 @@ int L_offset = 0;
 int R_offset = 0;
 unsigned long duration;
 
+struct PID_
+{
+  double kP;
+  double kD;
+  double kI;
+  double lastDerivative;
+};
+
+PID_ pitchPD;
+
+void initPID() {
+  pitchPD.kD = 0.25;
+  pitchPD.kP = 0.25;
+  pitchPD.kI = 0;
+  pitchPD.lastDerivative = 0;
+}
+
+double pitchPID(double desiredPitch, double currPitch, double dt, PID_ pid) {
+    double error = desiredPitch - currPitch;
+    double derivative = error / dt;
+    double output = pid.kP * error + pid.kD * (derivative - pid.lastDerivative);
+    pid.lastDerivative = derivative;
+    return output;
+}
+
+
 
 // ------------------------------------------------
 // BNO055 ReadData
@@ -74,6 +100,7 @@ void setup(void)
   pinMode(throttle_pin, INPUT);
 
   // while(!Serial);
+  initPID();
 
   /* Initialise the sensor */
   if (!bno.begin())
@@ -127,13 +154,17 @@ void loop(void)
   // Serial.println(z); 
 
   //Control loop
-  if (y < -5) {
-    R_offset+=3;
-    L_offset-=3;
-  } else if (y > 5) {
-    R_offset-=3;
-    L_offset+=3;
-  }
+  // if (y < -5) {
+  //   R_speed++;
+  //   L_speed--;
+  // } else if (y > 5) {
+  //   R_speed--;
+  //   L_speed++;
+  // }
+  // L_speed -= pitchPID(0, y, 1, pitchPD);
+  // R_speed += pitchPID(0, y, 1, pitchPD);
+  L_offset -= pitchPID(0, y, 1, pitchPD);
+  R_offset += pitchPID(0, y, 1, pitchPD);
 
   if (R_offset < -100) {
     R_offset = -100;
