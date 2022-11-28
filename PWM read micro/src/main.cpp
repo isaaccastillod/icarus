@@ -31,9 +31,25 @@ const int zpin = A1;                  // z-axis (only on 3-axis models)
 // int pin = 7;
 int throttle_pin = 7;
 int throttle_speed = SPEED_MIN;
-int L_offset = 0;
-int R_offset = 0;
-unsigned long duration;
+
+double W1_offset = 0;
+double W2_offset = 0;
+double W3_offset = 0;
+double W4_offset = 0;
+
+double L_offset = 0;
+double R_offset = 0;
+
+long int prev_t = 0;
+long int curr = 0;
+long int dt = 0;
+
+struct Angles 
+{
+  double x;
+  double y;
+  double z;
+};
 
 struct PID_
 {
@@ -43,17 +59,25 @@ struct PID_
   double lastDerivative;
 };
 
-PID_ pitchPD;
+PID_ pitchPID;
+PID_ yawPID;
 
-void initPID() {
-  pitchPD.kD = 0.25;
-  pitchPD.kP = 0.25;
-  pitchPD.kI = 0;
-  pitchPD.lastDerivative = 0;
+Angles eulerAng;
+
+void initPIDs() {
+  pitchPID.kD = 0.3;
+  pitchPID.kP = 0.5;
+  pitchPID.kI = 0;
+  pitchPID.lastDerivative = 0;
+  yawPID.kD = 0.3;
+  yawPID.kP = 0.5;
+  yawPID.kI = 0;
+  yawPID.lastDerivative = 0;
+
 }
 
-double pitchPID(double desiredPitch, double currPitch, double dt, PID_ pid) {
-    double error = desiredPitch - currPitch;
+double pd(double desiredAngle, double currAngle, double dt, PID_ pid) {
+  double error = desiredAngle - currAngle;
     double derivative = error / dt;
     double output = pid.kP * error + pid.kD * (derivative - pid.lastDerivative);
     pid.lastDerivative = derivative;
@@ -63,7 +87,19 @@ double pitchPID(double desiredPitch, double currPitch, double dt, PID_ pid) {
 
 
 // ------------------------------------------------
-// BNO055 ReadData
+// Read gyro from BNO055
+void read_gyro(sensors_event_t sensor) {
+  eulerAng.x = sensor.gyro.x;
+  eulerAng.y = sensor.gyro.y;
+  eulerAng.z = sensor.gyro.z;
+  Serial.print("\tx= ");
+  Serial.print(eulerAng.x);
+  Serial.print(" |\ty= ");
+  Serial.print(eulerAng.y);
+  Serial.print(" |\tz= ");
+  Serial.println(eulerAng.z);
+}
+
 
 /* Set the delay between fresh samples */
 uint16_t BNO055_SAMPLERATE_DELAY_MS = 100;
@@ -100,7 +136,11 @@ void setup(void)
   pinMode(throttle_pin, INPUT);
 
   // while(!Serial);
-  initPID();
+  initPIDs();
+  //dumb values, easy to spot problem with gyro
+  eulerAng.x = -1000000;
+  eulerAng.y = -1000000;
+  eulerAng.z = -1000000; 
 
   /* Initialise the sensor */
   if (!bno.begin())
@@ -117,10 +157,16 @@ void loop(void)
 {
   throttle_speed = pulseIn(throttle_pin, HIGH);
   // Serial.println(throttle_speed);  
-  int tot_R_speed = throttle_speed+R_offset;
-  int tot_L_speed = throttle_speed+L_offset;
+  int tot_R_speed = throttle_speed + R_offset;
+  int tot_L_speed = throttle_speed + L_offset;
+
+  // int tot_W1 = throttle_speed + W1_offset;
+  // int tot_W2 = throttle_speed + W2_offset;
+  // int tot_W3 = throttle_speed + W3_offset;
+  // int tot_W4 = throttle_speed + W4_offset;
+
   //DO NOT REMOVE, SAFETY
-  if (tot_R_speed > SPEED_LOW || tot_L_speed > SPEED_LOW) {
+  if (tot_R_speed > SPEED_MID || tot_L_speed > SPEED_MID) {
     myESC1.speed(SPEED_MIN);                                    // tell ESC to go to the oESC speed value
     myESC2.speed(SPEED_MIN); 
   } else {    
@@ -140,18 +186,15 @@ void loop(void)
   // Serial.println();
   // Serial.print("Calibration: Sys=");
   // Serial.print(system);
-  double x = -1000000, y = -1000000 , z = -1000000; //dumb values, easy to spot problem
+  
   // Serial.print(" Orient=");
   // Serial.print("Orient:");
-  x = orientationData.gyro.x;
-  y = orientationData.gyro.y;
-  z = orientationData.gyro.z;
-  // Serial.print("\tx= ");
-  // Serial.print(x);
-  Serial.print(" |\ty= ");
-  Serial.print(y);
-  // Serial.print(" |\tz= ");
-  // Serial.println(z); 
+  read_gyro(orientationData);
+
+  curr = millis();
+  dt = curr - prev_t;
+  prev_t = curr;
+  
 
   //Control loop
   // if (y < -5) {
@@ -161,30 +204,35 @@ void loop(void)
   //   R_speed--;
   //   L_speed++;
   // }
-  // L_speed -= pitchPID(0, y, 1, pitchPD);
-  // R_speed += pitchPID(0, y, 1, pitchPD);
-  L_offset -= pitchPID(0, y, 1, pitchPD);
-  R_offset += pitchPID(0, y, 1, pitchPD);
 
-  if (R_offset < -100) {
-    R_offset = -100;
+  L_offset = -pd(0, eulerAng.y, dt, pitchPID);
+  R_offset = pd(0, eulerAng.y, dt, pitchPID);
+
+
+  // Four motor controller
+  // (currently ignoring roll for simplicity)
+  // W1_offset = pd(0, eulerAng.y, dt, pitchPID) - pd(0, eulerAng.z, dt, yawPID);
+  // W2_offset = pd(0, eulerAng.y, dt, pitchPID) + pd(0, eulerAng.z, dt, yawPID);
+  // W3_offset = -pd(0, eulerAng.y, dt, pitchPID) - pd(0, eulerAng.z, dt, yawPID); 
+  // W4_offset = -pd(0, eulerAng.y, dt, pitchPID) + pd(0, eulerAng.z, dt, yawPID);
+
+  if (R_offset < -200) {
+    R_offset = -200;
   }
-  if (L_offset < -100) {
-    L_offset = -100;
+  if (L_offset < -200) {
+    L_offset = -200;
   }
-  if (R_offset > 100) {
-    R_offset = 100;
+  if (R_offset > 200) {
+    R_offset = 200;
   }
-  if (L_offset > 100) {
-    L_offset = 100;
+  if (L_offset > 200) {
+    L_offset = 200;
   }
   Serial.print(" |\tR_offset= ");
   Serial.print(R_offset);
   Serial.print(" |\tL_offset= ");
   Serial.print(L_offset);
 
-  // Serial.println("--");
+  Serial.println("--");
   delay(BNO055_SAMPLERATE_DELAY_MS);
 }
-
-
