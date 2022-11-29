@@ -22,7 +22,6 @@ ESC myESC1 (11, SPEED_MIN, SPEED_MAX, 500);                 // ESC_Name (ESC PIN
 ESC myESC2 (10, SPEED_MIN, SPEED_MAX, 500);                 // ESC_Name (ESC PIN, Minimum Value, Maximum Value, Default Speed, Arm Value)
 int oESC;                                                 // Variable for the speed sent to the ESC
 
-
 const int groundpin = A4;             // analog input pin 4 -- ground
 const int powerpin = A5;              // analog input pin 5 -- voltage
 const int xpin = A3;                  // x-axis of the accelerometer
@@ -59,15 +58,10 @@ double pitchPID(double desiredPitch, double currPitch, double dt, PID_ pid) {
     pid.lastDerivative = derivative;
     return output;
 }
-
-
-
 // ------------------------------------------------
 // BNO055 ReadData
-
 /* Set the delay between fresh samples */
 uint16_t BNO055_SAMPLERATE_DELAY_MS = 100;
-
 // Check I2C device address and correct line below (by default address is 0x29 or 0x28)
 //                                   id, address
 Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28);
@@ -109,7 +103,6 @@ void setup(void)
     Serial.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
     while (1);
   }
-
   delay(1000);
 }
 
