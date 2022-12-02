@@ -23,8 +23,8 @@
 #define INPUT_THROTTLE (20)
 ESC myESC1 (FRONT_RIGHT, SPEED_MIN, SPEED_MAX, 500);                 // ESC_Name (ESC PIN, Minimum Value, Maximum Value, Default Speed, Arm Value)
 ESC myESC2 (FRONT_LEFT, SPEED_MIN, SPEED_MAX, 500);                 // ESC_Name (ESC PIN, Minimum Value, Maximum Value, Default Speed, Arm Value)
-ESC myESC3 (FRONT_RIGHT, SPEED_MIN, SPEED_MAX, 500);                 // ESC_Name (ESC PIN, Minimum Value, Maximum Value, Default Speed, Arm Value)
-ESC myESC4 (FRONT_LEFT, SPEED_MIN, SPEED_MAX, 500);                 // ESC_Name (ESC PIN, Minimum Value, Maximum Value, Default Speed, Arm Value)
+ESC myESC3 (BACK_LEFT, SPEED_MIN, SPEED_MAX, 500);                 // ESC_Name (ESC PIN, Minimum Value, Maximum Value, Default Speed, Arm Value)
+ESC myESC4 (BACK_RIGHT, SPEED_MIN, SPEED_MAX, 500);                 // ESC_Name (ESC PIN, Minimum Value, Maximum Value, Default Speed, Arm Value)
 int oESC;                                                 // Variable for the speed sent to the ESC
 
 const int groundpin = A4;             // analog input pin 4 -- ground
@@ -161,10 +161,11 @@ void loop(void)
 {
   throttle_speed = pulseIn(INPUT_THROTTLE, HIGH);
   // Serial.println(throttle_speed);  
-  // int tot_FR_speed = throttle_speed + R_offset;
-  // int tot_FL_speed = throttle_speed + L_offset;
-  // int tot_BR_speed = throttle_speed + R_offset;
-  // int tot_BL_speed = throttle_speed + L_offset;
+
+  // int tot_W1 = throttle_speed + W1_offset;
+  // int tot_W2 = throttle_speed + W2_offset;
+  // int tot_W3 = throttle_speed + W3_offset;
+  // int tot_W4 = throttle_speed + W4_offset;
 
   int tot_FR_speed = throttle_speed;
   int tot_FL_speed = throttle_speed;
@@ -183,14 +184,14 @@ void loop(void)
     myESC3.speed(tot_BR_speed);                                    // tell ESC to go to the oESC speed value
     myESC4.speed(tot_BL_speed);
   }  
-  Serial.print("\ttot_FR_speed= ");
-  Serial.print(tot_FR_speed);
-  Serial.print(" |\ttot_FL_speed= ");
-  Serial.println(tot_FL_speed);
-  Serial.print("\ttot_BR_speed= ");
-  Serial.print(tot_BR_speed);
-  Serial.print(" |\ttot_BL_speed= ");
-  Serial.println(tot_BL_speed);
+  // Serial.print("\ttot_FR_speed= ");
+  // Serial.print(tot_FR_speed);
+  // Serial.print(" |\ttot_FL_speed= ");
+  // Serial.println(tot_FL_speed);
+  // Serial.print("\ttot_BR_speed= ");
+  // Serial.print(tot_BR_speed);
+  // Serial.print(" |\ttot_BL_speed= ");
+  // Serial.println(tot_BL_speed);
   //could add VECTOR_ACCELEROMETER, VECTOR_MAGNETOMETER,VECTOR_GRAVITY...
   sensors_event_t orientationData;
   bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);  
@@ -203,32 +204,26 @@ void loop(void)
   
   // Serial.print(" Orient=");
   // Serial.print("Orient:");
-  read_gyro(orientationData);
+  //read_gyro(orientationData);
 
   curr = millis();
   dt = curr - prev_t;
   prev_t = curr;
-  
-
-  //Control loop
-  // if (y < -5) {
-  //   R_speed++;
-  //   L_speed--;
-  // } else if (y > 5) {
-  //   R_speed--;
-  //   L_speed++;
-  // }
 
   L_offset = -pd(0, eulerAng.y, dt, pitchPID);
   R_offset = pd(0, eulerAng.y, dt, pitchPID);
 
+  // Serial.print(" |\teulerAng.y= ");
+  // Serial.print(eulerAng.y);
+  // Serial.print(" |\teulerAng.z= ");
+  // Serial.print(eulerAng.z);
 
   // Four motor controller
   // (currently ignoring roll for simplicity)
-  // W1_offset = pd(0, eulerAng.y, dt, pitchPID) - pd(0, eulerAng.z, dt, yawPID);
-  // W2_offset = pd(0, eulerAng.y, dt, pitchPID) + pd(0, eulerAng.z, dt, yawPID);
-  // W3_offset = -pd(0, eulerAng.y, dt, pitchPID) - pd(0, eulerAng.z, dt, yawPID); 
-  // W4_offset = -pd(0, eulerAng.y, dt, pitchPID) + pd(0, eulerAng.z, dt, yawPID);
+  W1_offset = pd(0, eulerAng.y, dt, pitchPID) - pd(0, eulerAng.z, dt, yawPID);
+  W2_offset = pd(0, eulerAng.y, dt, pitchPID) + pd(0, eulerAng.z, dt, yawPID);
+  W3_offset = -pd(0, eulerAng.y, dt, pitchPID) - pd(0, eulerAng.z, dt, yawPID); 
+  W4_offset = -pd(0, eulerAng.y, dt, pitchPID) + pd(0, eulerAng.z, dt, yawPID);
 
   if (R_offset < -200) {
     R_offset = -200;
@@ -242,10 +237,14 @@ void loop(void)
   if (L_offset > 200) {
     L_offset = 200;
   }
-  Serial.print(" |\tR_offset= ");
-  Serial.print(R_offset);
-  Serial.print(" |\tL_offset= ");
-  Serial.print(L_offset);
+  Serial.print(" |\tW1_offset= ");
+  Serial.print(W1_offset);
+  Serial.print(" |\tW2_offset= ");
+  Serial.print(W2_offset);
+  Serial.print(" |\tW3_offset= ");
+  Serial.print(W3_offset);
+  Serial.print(" |\tW4_offset= ");
+  Serial.print(W4_offset);
 
   Serial.println("--");
   delay(BNO055_SAMPLERATE_DELAY_MS);
