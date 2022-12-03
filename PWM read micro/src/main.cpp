@@ -92,12 +92,12 @@ void read_gyro(sensors_event_t sensor) {
   eulerAng.x = sensor.gyro.x;
   eulerAng.y = sensor.gyro.y;
   eulerAng.z = sensor.gyro.z;
-  Serial.print("\tx= ");
-  Serial.print(eulerAng.x);
-  Serial.print(" |\ty= ");
-  Serial.print(eulerAng.y);
-  Serial.print(" |\tz= ");
-  Serial.println(eulerAng.z);
+  // Serial.print("\tx= ");
+  // Serial.print(eulerAng.x);
+  // Serial.print(" |\ty= ");
+  // Serial.print(eulerAng.y);
+  // Serial.print(" |\tz= ");
+  // Serial.println(eulerAng.z);
 }
 /* Set the delay between fresh samples */
 uint16_t BNO055_SAMPLERATE_DELAY_MS = 100;
@@ -162,15 +162,20 @@ void loop(void)
   throttle_speed = pulseIn(INPUT_THROTTLE, HIGH);
   // Serial.println(throttle_speed);  
 
-  // int tot_W1 = throttle_speed + W1_offset;
-  // int tot_W2 = throttle_speed + W2_offset;
-  // int tot_W3 = throttle_speed + W3_offset;
-  // int tot_W4 = throttle_speed + W4_offset;
+  int tot_W1 = throttle_speed + W1_offset; //front left
+  int tot_W2 = throttle_speed + W2_offset; //front right
+  int tot_W3 = throttle_speed + W3_offset; //back left
+  int tot_W4 = throttle_speed + W4_offset; //back right
 
-  int tot_FR_speed = throttle_speed;
-  int tot_FL_speed = throttle_speed;
-  int tot_BR_speed = throttle_speed;
-  int tot_BL_speed = throttle_speed;
+  int tot_FR_speed = tot_W2;
+  int tot_FL_speed = tot_W1;
+  int tot_BR_speed = tot_W4;
+  int tot_BL_speed = tot_W3;
+
+  // int tot_FR_speed = throttle_speed;
+  // int tot_FL_speed = throttle_speed;
+  // int tot_BR_speed = throttle_speed;
+  // int tot_BL_speed = throttle_speed;
 
   //DO NOT REMOVE, SAFETY
   if (tot_FR_speed > SPEED_MID || tot_FL_speed > SPEED_MID || tot_BL_speed > SPEED_MID || tot_BR_speed > SPEED_MID) {
@@ -204,7 +209,7 @@ void loop(void)
   
   // Serial.print(" Orient=");
   // Serial.print("Orient:");
-  //read_gyro(orientationData);
+  read_gyro(orientationData);
 
   curr = millis();
   dt = curr - prev_t;
@@ -220,10 +225,10 @@ void loop(void)
 
   // Four motor controller
   // (currently ignoring roll for simplicity)
-  W1_offset = pd(0, eulerAng.y, dt, pitchPID) - pd(0, eulerAng.z, dt, yawPID);
-  W2_offset = pd(0, eulerAng.y, dt, pitchPID) + pd(0, eulerAng.z, dt, yawPID);
-  W3_offset = -pd(0, eulerAng.y, dt, pitchPID) - pd(0, eulerAng.z, dt, yawPID); 
-  W4_offset = -pd(0, eulerAng.y, dt, pitchPID) + pd(0, eulerAng.z, dt, yawPID);
+  W1_offset = pd(0, eulerAng.y, dt, pitchPID) - pd(0, eulerAng.z, dt, yawPID); //front left
+  W2_offset = pd(0, eulerAng.y, dt, pitchPID) + pd(0, eulerAng.z, dt, yawPID); //front right
+  W3_offset = -pd(0, eulerAng.y, dt, pitchPID) - pd(0, eulerAng.z, dt, yawPID); //back left
+  W4_offset = -pd(0, eulerAng.y, dt, pitchPID) + pd(0, eulerAng.z, dt, yawPID); //back right
 
   if (R_offset < -200) {
     R_offset = -200;
@@ -237,6 +242,7 @@ void loop(void)
   if (L_offset > 200) {
     L_offset = 200;
   }
+
   Serial.print(" |\tW1_offset= ");
   Serial.print(W1_offset);
   Serial.print(" |\tW2_offset= ");
