@@ -42,6 +42,9 @@ int desired_x = 1500;
 int rs0 = 1500;
 int rs1 = 1500;
 
+double level_x = 0;
+double level_y = 0;
+double level_z = 0;
 double W1_offset = 0;
 double W2_offset = 0;
 double W3_offset = 0;
