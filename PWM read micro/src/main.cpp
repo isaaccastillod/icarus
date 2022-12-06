@@ -162,10 +162,15 @@ void loop(void)
   throttle_speed = pulseIn(INPUT_THROTTLE, HIGH);
   // Serial.println(throttle_speed);  
 
-  int tot_W1 = throttle_speed + W1_offset; //front left
-  int tot_W2 = throttle_speed + W2_offset; //front right
+  int tot_W1 = throttle_speed + W2_offset; //front left
+  int tot_W2 = throttle_speed + W1_offset; //front right
   int tot_W3 = throttle_speed + W3_offset; //back left
   int tot_W4 = throttle_speed + W4_offset; //back right
+
+  // int tot_W1 = throttle_speed; //front left
+  // int tot_W2 = throttle_speed; //front right
+  // int tot_W3 = throttle_speed; //back left
+  // int tot_W4 = throttle_speed; //back right
 
   int tot_FR_speed = tot_W2;
   int tot_FL_speed = tot_W1;
@@ -215,13 +220,13 @@ void loop(void)
   dt = curr - prev_t;
   prev_t = curr;
 
-  L_offset = -pd(0, eulerAng.y, dt, pitchPID);
-  R_offset = pd(0, eulerAng.y, dt, pitchPID);
+  // L_offset = -pd(0, eulerAng.y, dt, pitchPID);
+  // R_offset = pd(0, eulerAng.y, dt, pitchPID);
 
-  // Serial.print(" |\teulerAng.y= ");
-  // Serial.print(eulerAng.y);
-  // Serial.print(" |\teulerAng.z= ");
-  // Serial.print(eulerAng.z);
+  Serial.print(" |\teulerAng.y= ");
+  Serial.print(eulerAng.y);
+  Serial.print(" |\teulerAng.z= ");
+  Serial.print(eulerAng.z);
 
   // Four motor controller
   // (currently ignoring roll for simplicity)
@@ -230,27 +235,27 @@ void loop(void)
   W3_offset = -pd(0, eulerAng.y, dt, pitchPID) - pd(0, eulerAng.z, dt, yawPID); //back left
   W4_offset = -pd(0, eulerAng.y, dt, pitchPID) + pd(0, eulerAng.z, dt, yawPID); //back right
 
-  if (R_offset < -200) {
-    R_offset = -200;
-  }
-  if (L_offset < -200) {
-    L_offset = -200;
-  }
-  if (R_offset > 200) {
-    R_offset = 200;
-  }
-  if (L_offset > 200) {
-    L_offset = 200;
-  }
+  // if (R_offset < -200) {
+  //   R_offset = -200;
+  // }
+  // if (L_offset < -200) {
+  //   L_offset = -200;
+  // }
+  // if (R_offset > 200) {
+  //   R_offset = 200;
+  // }
+  // if (L_offset > 200) {
+  //   L_offset = 200;
+  // }
 
-  Serial.print(" |\tW1_offset= ");
-  Serial.print(W1_offset);
-  Serial.print(" |\tW2_offset= ");
-  Serial.print(W2_offset);
-  Serial.print(" |\tW3_offset= ");
-  Serial.print(W3_offset);
-  Serial.print(" |\tW4_offset= ");
-  Serial.print(W4_offset);
+  // Serial.print(" |\tW1_offset= ");
+  // Serial.print(W1_offset);
+  // Serial.print(" |\tW2_offset= ");
+  // Serial.print(W2_offset);
+  // Serial.print(" |\tW3_offset= ");
+  // Serial.print(W3_offset);
+  // Serial.print(" |\tW4_offset= ");
+  // Serial.print(W4_offset);
 
   Serial.println("--");
   delay(BNO055_SAMPLERATE_DELAY_MS);
