@@ -50,6 +50,7 @@ double W4_offset = 0;
 double L_offset = 0;
 double R_offset = 0;
 
+long int init_t = 0;
 long int prev_t = 0;
 long int curr = 0;
 long int dt = 0;
@@ -242,13 +243,14 @@ void loop(void)
   Serial.print(" |\teulerAng.z= ");
   Serial.print(eulerAng.z);
 
+  if (curr - init_t > 3000) {
   // Four motor controller
   // (currently ignoring roll for simplicity)
-  W1_offset = pd(0, eulerAng.y, dt, pitchPID) + pd(0, eulerAng.z, dt, yawPID); //front left
-  W2_offset = pd(0, eulerAng.y, dt, pitchPID) - pd(0, eulerAng.z, dt, yawPID); //front right
-  W3_offset = -pd(0, eulerAng.y, dt, pitchPID) + pd(0, eulerAng.z, dt, yawPID); //back left
-  W4_offset = -pd(0, eulerAng.y, dt, pitchPID) - pd(0, eulerAng.z, dt, yawPID); //back right
-
+    W1_offset = pd(0, eulerAng.y, dt, pitchPID) + pd(0, eulerAng.z, dt, yawPID); //front left
+    W2_offset = pd(0, eulerAng.y, dt, pitchPID) - pd(0, eulerAng.z, dt, yawPID); //front right
+    W3_offset = -pd(0, eulerAng.y, dt, pitchPID) + pd(0, eulerAng.z, dt, yawPID); //back left
+    W4_offset = -pd(0, eulerAng.y, dt, pitchPID) - pd(0, eulerAng.z, dt, yawPID); //back right
+  }
   // if (R_offset < -200) {
   //   R_offset = -200;
   // }
