@@ -20,7 +20,10 @@
 #define FRONT_RIGHT (10)
 #define BACK_LEFT (6)
 #define BACK_RIGHT (5)
+#define INPUT_RS0 (18)
+#define INPUT_RS1 (19)
 #define INPUT_THROTTLE (20)
+#define INPUT_YAW (21)
 ESC myESC1 (FRONT_RIGHT, SPEED_MIN, SPEED_MAX, 500);                 // ESC_Name (ESC PIN, Minimum Value, Maximum Value, Default Speed, Arm Value)
 ESC myESC2 (FRONT_LEFT, SPEED_MIN, SPEED_MAX, 500);                 // ESC_Name (ESC PIN, Minimum Value, Maximum Value, Default Speed, Arm Value)
 ESC myESC3 (BACK_LEFT, SPEED_MIN, SPEED_MAX, 500);                 // ESC_Name (ESC PIN, Minimum Value, Maximum Value, Default Speed, Arm Value)
@@ -32,9 +35,12 @@ const int powerpin = A5;              // analog input pin 5 -- voltage
 const int xpin = A3;                  // x-axis of the accelerometer
 const int ypin = A2;                  // y-axis
 const int zpin = A1;                  // z-axis (only on 3-axis models)
-// int pin = 7;
-int throttle_pin = 20;
 int throttle_speed = SPEED_MIN;
+int desired_yaw = 1500;
+int desired_y = 1500;
+int desired_x = 1500;
+int rs0 = 1500;
+int rs1 = 1500;
 
 double W1_offset = 0;
 double W2_offset = 0;
@@ -136,6 +142,9 @@ void setup(void)
   Serial.begin(115200);
   ESC_startup();
   Serial.println("Orientation Sensor Test"); Serial.println("");
+  pinMode(INPUT_YAW, INPUT);
+  pinMode(INPUT_RS0, INPUT);
+  pinMode(INPUT_RS1, INPUT);
   pinMode(INPUT_THROTTLE, INPUT);
   Serial.println("Sensor Test finished");
   // while(!Serial);
@@ -160,6 +169,11 @@ void setup(void)
 void loop(void)
 {
   throttle_speed = pulseIn(INPUT_THROTTLE, HIGH);
+  desired_yaw = pulseIn(INPUT_YAW, HIGH);
+  rs0 = pulseIn(INPUT_RS0, HIGH);
+  rs1 = pulseIn(INPUT_RS1, HIGH);
+  desired_y = rs0 + (1500 - rs1);
+  desired_x = rs1 - (1500 - rs0);
   // Serial.println(throttle_speed);  
 
   int tot_W1 = throttle_speed + W2_offset; //front left
