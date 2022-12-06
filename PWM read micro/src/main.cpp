@@ -225,10 +225,10 @@ void loop(void)
 
   // Four motor controller
   // (currently ignoring roll for simplicity)
-  W1_offset = pd(0, eulerAng.y, dt, pitchPID) - pd(0, eulerAng.z, dt, yawPID); //front left
-  W2_offset = pd(0, eulerAng.y, dt, pitchPID) + pd(0, eulerAng.z, dt, yawPID); //front right
-  W3_offset = -pd(0, eulerAng.y, dt, pitchPID) - pd(0, eulerAng.z, dt, yawPID); //back left
-  W4_offset = -pd(0, eulerAng.y, dt, pitchPID) + pd(0, eulerAng.z, dt, yawPID); //back right
+  W1_offset = pd(0, eulerAng.y, dt, pitchPID) + pd(0, eulerAng.z, dt, yawPID); //front left
+  W2_offset = pd(0, eulerAng.y, dt, pitchPID) - pd(0, eulerAng.z, dt, yawPID); //front right
+  W3_offset = -pd(0, eulerAng.y, dt, pitchPID) + pd(0, eulerAng.z, dt, yawPID); //back left
+  W4_offset = -pd(0, eulerAng.y, dt, pitchPID) - pd(0, eulerAng.z, dt, yawPID); //back right
 
   if (R_offset < -200) {
     R_offset = -200;
