@@ -54,6 +54,15 @@ double W1_offset = 0;
 double W2_offset = 0;
 double W3_offset = 0;
 double W4_offset = 0;
+double tot_FL_speed;
+double tot_FR_speed;
+double tot_BL_speed;
+double tot_BR_speed;
+
+double esc_1 = 0;
+double esc_2 = 0;
+double esc_3 = 0;
+double esc_4 = 0;
 
 double L_offset = 0;
 double R_offset = 0;
@@ -85,16 +94,16 @@ PID_ rollPID;
 Angles eulerAng;
 
 void initPIDs() {
-  pitchPID.kD = 1;
-  pitchPID.kP = 2;
+  pitchPID.kD = .3;
+  pitchPID.kP = 1.5;
   pitchPID.kI = 0; //0
   pitchPID.lastDerivative = 0;
   rollPID.kD = pitchPID.kD; //oscillation
   rollPID.kP = pitchPID.kP; //magnitude of difference between motors
   rollPID.kI = pitchPID.kI ; //0
   rollPID.lastDerivative = 0;
-  yawPID.kD = 4; //oscillation
-  yawPID.kP = 0.02; //magnitude of difference between motors
+  yawPID.kD = .5; //oscillation
+  yawPID.kP = 1; //magnitude of difference between motors
   yawPID.kI = 0 ; //0
   yawPID.lastDerivative = 0;  
 }
@@ -108,17 +117,27 @@ double pd(double desiredAngle, double currAngle, double dt, PID_ pid) {
 }
 // ------------------------------------------------
 // Read gyro from BNO055
+
+double range(double degree) {
+  double longitude = degree;
+  if (longitude > 180) {
+    longitude -= 360;
+  }
+  return longitude;
+}
 void read_gyro(sensors_event_t sensor) {
   eulerAng.x = sensor.gyro.x;
   eulerAng.y = sensor.gyro.y;
   eulerAng.z = sensor.gyro.z;
-  Serial.print("\tx= ");
-  Serial.print(eulerAng.x);
-  Serial.print(" |\ty= ");
-  Serial.print(eulerAng.y);
-  Serial.print(" |\tz= ");
-  Serial.println(eulerAng.z);
+  Serial.print("|\tx= ");
+  Serial.print(range(eulerAng.x));
+  // Serial.print(" |\ty= ");
+  // Serial.print(eulerAng.y);
+  // Serial.print(" |\tz= ");
+  // Serial.println(eulerAng.z);
 }
+
+
 /* Set the delay between fresh samples */
 uint16_t BNO055_SAMPLERATE_DELAY_MS = 1; //originally 100
 // Check I2C device address and correct line below (by default address is 0x29 or 0x28)
@@ -150,7 +169,7 @@ void ESC_startup() {
 }
 
 void custom_calibration() {
-  level_x = eulerAng.x;
+  level_x = range(eulerAng.x);
   level_y = eulerAng.y;
   level_z = eulerAng.z;
   Serial.println("ground calibrated");
@@ -187,10 +206,10 @@ void setup(void)
 
 void loop(void)
 {
-  throttle_speed = pulseIn(INPUT_THROTTLE, HIGH);
-  desired_yaw = pulseIn(INPUT_YAW, HIGH);
-  rs0 = pulseIn(INPUT_RS0, HIGH);
-  rs1 = pulseIn(INPUT_RS1, HIGH);
+  throttle_speed = (pulseIn(INPUT_THROTTLE, HIGH) + throttle_speed)/2; //simple moving average
+  desired_yaw = (pulseIn(INPUT_YAW, HIGH) + desired_yaw)/2;  
+  rs0 = (pulseIn(INPUT_RS0, HIGH) + rs0)/2;
+  rs1 = (pulseIn(INPUT_RS1, HIGH) + rs1)/2;
   desired_pitch = rs0 + (1500 - rs1);
   desired_roll = rs1 - (1500 - rs0);
   receiver_input_channel_2 = desired_pitch; //pitch
@@ -221,10 +240,11 @@ void loop(void)
   pid_yaw_setpoint = 0;
   //We need a little dead band of 16us for better results.
   if(receiver_input_channel_3 > 1050){ //Do not yaw when turning off the motors.
-    if(receiver_input_channel_4 > 1508)pid_yaw_setpoint = (receiver_input_channel_4 - 1508)/5.0;
-    else if(receiver_input_channel_4 < 1492)pid_yaw_setpoint = (receiver_input_channel_4 - 1492)/5.0;
+    if(receiver_input_channel_4 > 1508)pid_yaw_setpoint = (receiver_input_channel_4 - 1508)/10.0;
+    else if(receiver_input_channel_4 < 1492)pid_yaw_setpoint = (receiver_input_channel_4 - 1492)/10.0;
   }
-  
+  Serial.print(" |\tDesired Yaw= ");
+  Serial.println(pid_yaw_setpoint);
   // Serial.println(throttle_speed);  
 
   
@@ -260,34 +280,45 @@ void loop(void)
 
   // Four motor controller
   // (currently ignoring roll for simplicity)
-  W3_offset=pd(level_y-pid_pitch_setpoint, eulerAng.y, dt, pitchPID)+pd(level_z-pid_roll_setpoint, eulerAng.z, dt, rollPID)+pd(level_x, eulerAng.x, dt, yawPID); //front right
-  W4_offset=pd(level_y-pid_pitch_setpoint, eulerAng.y, dt, pitchPID)-pd(level_z-pid_roll_setpoint, eulerAng.z, dt, rollPID)-pd(level_x, eulerAng.x, dt, yawPID); //front left
-  W1_offset=-pd(level_y-pid_pitch_setpoint, eulerAng.y, dt, pitchPID)+pd(level_z-pid_roll_setpoint, eulerAng.z, dt, rollPID)-pd(level_x, eulerAng.x, dt, yawPID); //back right
-  W2_offset=-pd(level_y-pid_pitch_setpoint, eulerAng.y, dt, pitchPID)-pd(level_z-pid_roll_setpoint, eulerAng.z, dt, rollPID)+pd(level_x, eulerAng.x, dt, yawPID);; //back left
+  
+  pid_output_pitch = pd(level_y-pid_pitch_setpoint, eulerAng.y, dt, pitchPID);
+  pid_output_roll = pd(level_z-pid_roll_setpoint, eulerAng.z, dt, rollPID);
+  pid_output_yaw = pd(level_x-pid_yaw_setpoint, range(eulerAng.x), dt, yawPID);
 
-  // esc_1 = throttle - pid_output_pitch + pid_output_roll - pid_output_yaw; //Calculate the pulse for esc 1 (front-right - CCW)
-  // esc_2 = throttle + pid_output_pitch + pid_output_roll + pid_output_yaw; //Calculate the pulse for esc 2 (rear-right - CW)
-  // esc_3 = throttle + pid_output_pitch - pid_output_roll - pid_output_yaw; //Calculate the pulse for esc 3 (rear-left - CCW)
-  // esc_4 = throttle - pid_output_pitch - pid_output_roll + pid_output_yaw; //Calculate the pulse for esc 4 (front-left - CW)    
+  W1_offset=-pid_output_pitch + pid_output_roll;// + pid_output_yaw; //front left
+  W2_offset=-pid_output_pitch - pid_output_roll;// - pid_output_yaw; //front right
+  W3_offset= pid_output_pitch - pid_output_roll;// + pid_output_yaw; //back right
+  W4_offset= pid_output_pitch + pid_output_roll;// - pid_output_yaw; //back left
+  
 
-  Serial.print(" |\tW1_offset= ");
-  Serial.print(W1_offset);
-  Serial.print(" |\tW2_offset= ");
-  Serial.print(W2_offset);
-  Serial.print(" |\tW3_offset= ");
-  Serial.print(W3_offset);
-  Serial.print(" |\tW4_offset= ");
-  Serial.print(W4_offset);
+  esc_1 = throttle_speed - pid_output_pitch + pid_output_roll - pid_output_yaw; //Calculate the pulse for esc 1 (front-right - CCW)   
+  esc_2 = throttle_speed + pid_output_pitch + pid_output_roll + pid_output_yaw; //Calculate the pulse for esc 2 (rear-right - CW)
+  esc_3 = throttle_speed + pid_output_pitch - pid_output_roll - pid_output_yaw; //Calculate the pulse for esc 3 (rear-left - CCW)
+  esc_4 = throttle_speed - pid_output_pitch - pid_output_roll + pid_output_yaw; //Calculate the pulse for esc 4 (front-left - CW)  
+  
 
-  int tot_W1 = throttle_speed + W1_offset; //front right
-  int tot_W2 = throttle_speed + W2_offset; //front left
-  int tot_W3 = throttle_speed + W3_offset; //back right
-  int tot_W4 = throttle_speed + W4_offset; //back left
+  // Serial.print(" |\tW1_offset= ");
+  // Serial.print(W1_offset);
+  // Serial.print(" |\tW2_offset= ");
+  // Serial.print(W2_offset);
+  // Serial.print(" |\tW3_offset= ");
+  // Serial.print(W3_offset);
+  // Serial.print(" |\tW4_offset= ");
+  // Serial.print(W4_offset);
 
-  int tot_FL_speed = tot_W1;
-  int tot_FR_speed = tot_W2;
-  int tot_BL_speed = tot_W3;
-  int tot_BR_speed = tot_W4; 
+  tot_FL_speed = throttle_speed + W1_offset; //front left
+  tot_FR_speed = throttle_speed + W2_offset; //front right
+  tot_BR_speed = throttle_speed + W3_offset; //back right
+  tot_BL_speed = throttle_speed + W4_offset; //back left
+
+  Serial.print(" |\tFL= ");
+  Serial.print(tot_FL_speed);
+  Serial.print(" |\tFR= ");
+  Serial.print(tot_FR_speed);
+  Serial.print(" |\tBR= ");
+  Serial.print(tot_BR_speed);
+  Serial.print(" |\tBL= ");
+  Serial.print(tot_BL_speed);
 
   //DO NOT REMOVE, SAFETY
   if (tot_FR_speed > SPEED_MID || tot_FL_speed > SPEED_MID || tot_BL_speed > SPEED_MID || tot_BR_speed > SPEED_MID) {
@@ -301,14 +332,6 @@ void loop(void)
     myESC3.speed(tot_BL_speed);                                    // tell ESC to go to the oESC speed value
     myESC4.speed(tot_BR_speed);
   }  
-  // Serial.print("\ttot_FR_speed= ");
-  // Serial.print(tot_FR_speed);
-  // Serial.print(" |\ttot_FL_speed= ");
-  // Serial.println(tot_FL_speed);
-  // Serial.print("\ttot_BR_speed= ");
-  // Serial.print(tot_BR_speed);
-  // Serial.print(" |\ttot_BL_speed= ");
-  // Serial.println(tot_BL_speed);
 
   delay(BNO055_SAMPLERATE_DELAY_MS);
 }
